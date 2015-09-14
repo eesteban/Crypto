@@ -29,6 +29,11 @@ angular.module('crypto', ['ionic', 'crypto.controllers', 'ngCordova'])
           {'color': 'royal'},
           {'color': 'dark'}
         ];
+
+        $rootScope.LOWERCASE = 'abcdefghijklmnopqrstuvwxyz';
+        $rootScope.UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $rootScope.DIGIT = '1234567890';
+        $rootScope.SYMBOL = '#%&()*+-¿?@[]_';
       }
     );
   })
@@ -54,6 +59,6 @@ angular.module('crypto', ['ionic', 'crypto.controllers', 'ngCordova'])
 
     $urlRouterProvider.otherwise('/');
 
-  })
+  });
 
 

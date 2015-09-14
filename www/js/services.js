@@ -25,12 +25,19 @@ function DBAdmin($cordovaSQLite, $q, $ionicPlatform) {
         db = window.openDatabase("crypto.db", "1.0", "Crypto DB", -1);
       }
 
-      /*$cordovaSQLite.execute(db, "DROP TABLE platforms");
-       $cordovaSQLite.execute(db, "DROP TABLE passwords");*/
+      //$cordovaSQLite.execute(db, "DROP TABLE platforms");
+      //$cordovaSQLite.execute(db, "DROP TABLE passwords");
 
       $cordovaSQLite.execute(db, "CREATE TABLE IF NOT EXISTS platforms (name TEXT PRIMARY KEY, minimumLength INTEGER, " +
         "lowercase INTEGER, uppercase INTEGER, digit INTEGER, symbol INTEGER, color TEXT)");
       console.log('Creating table: Platforms');
+
+      query("INSERT OR REPLACE INTO platforms (name, minimumLength, lowercase, uppercase, digit, symbol, color) " +
+        "VALUES ('Google',8,1,1,1,1,'assertive')");
+      query("INSERT OR REPLACE INTO platforms (name, minimumLength, lowercase, uppercase, digit, symbol, color) " +
+        "VALUES ('Twitter',6,1,1,1,1,'calm')");
+      query("INSERT OR REPLACE INTO platforms (name, minimumLength, lowercase, uppercase, digit, symbol, color) " +
+        "VALUES ('Facebook',6,1,1,1,1,'positive')");
 
       $cordovaSQLite.execute(db, "CREATE TABLE IF NOT EXISTS passwords (id INTEGER PRIMARY KEY, name, seed, key, accChar, cipher0, cipher1, cipher2)");
       console.log('Creating table: Passwords');
