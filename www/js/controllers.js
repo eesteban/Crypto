@@ -1,48 +1,37 @@
 angular.module('crypto.controllers', ['ionic', 'crypto.services'])
 
-  .controller('HomeCtrl', ['$scope', homeController])
-  .controller('GeneratePasswordCtrl', ['$scope', '$rootScope', 'DBService',generatePasswordController])
-  .controller('AddPlatformCtrl', ['$scope', '$ionicPopup', '$state','$rootScope', 'DBService', addPlatformController]);
+  .controller('PasswordCtrl', ['$scope', passwordCtrl])
+  .controller('NewPasswordCtrl', ['$scope', '$rootScope', 'DBAdminService',newPasswordController])
+  .controller('AddCategoryCtrl', ['$scope', '$ionicPopup', '$state','$rootScope', 'DBAdminService', addCategoryController]);
 
-function homeController($scope) {
+function passwordCtrl($scope) {
+
 
 }
 
-function generatePasswordController($scope, $rootScope, DBService) {
-  $scope.allPlatforms = [];
-  $scope.selectedPlatform;
+function newPasswordController($scope, $rootScope, DBAdminService) {
+  $scope.allCategories = [];
+  $scope.selectedCategory;
   $scope.customSeed = false;
 
-  DBService.getAllPlatforms().then(function(allPlatforms){
-    $scope.allPlatforms = allPlatforms;
-    $scope.selectedPlatform = $scope.allPlatforms[0];
+  DBAdminService.getAllCategories().then(function(allCategories){
+    $scope.allCategories = allCategories;
+    $scope.selectedCategory = $scope.allCategories[1];
   });
 
   $scope.passwordConfig = {
     name: String(),
     length : 8,
     acceptedCharacters: {
-      lowercase: Boolean(),
-      uppercase: Boolean(),
-      digit: Boolean(),
-      symbol: Boolean()
+      lowercase: true,
+      uppercase: true,
+      digit: true,
+      symbol: true
     },
-    cipheredSeed: String(),
     cipherKey: String(),
     ciphers: String[3],
-    seed: 'Hello!',
+    seed: String(),
     availableCharacters: String()
-  };
-
-  $scope.generatePassword = function(){
-    var password = {
-      platform: $scope.selectedPlatform,
-      name: $scope.passwordConfig.name,
-      acceptedCharacters: $scope.passwordConfig.acceptedCharacters,
-      cipheredSeed: $scope.passwordConfig.cipheredSeed,
-      cipherKey:$scope.passwordConfig.cipherKey,
-      ciphers: $scope.passwordConfig.ciphers
-    }
   };
 
   $scope.useCustomSeed = function(custom){
@@ -50,20 +39,30 @@ function generatePasswordController($scope, $rootScope, DBService) {
       $scope.customSeed=true;
     }else{
       $scope.customSeed=false;
-      $scope.generateSeed();
+    }
+  };
+
+  $scope.generatePassword = function(){
+    var password = {
+      category: $scope.selectedCategory,
+      name: $scope.passwordConfig.name,
+      acceptedCharacters: $scope.passwordConfig.acceptedCharacters,
+      cipherSeed: String(),
+      cipherKey:$scope.passwordConfig.cipherKey,
+      ciphers: $scope.passwordConfig.ciphers
     }
   };
 
   $scope.generateSeed = function(){
-    if($scope.selectedPlatform==undefined){
-      alertPopup('No platform detected', 'Select one platform before continue please')
+    console.log('Inside generate seed');
+    if($scope.selectedCategory==undefined){
+      alertPopup('No category detected', 'Select one category before continue please')
     }else{
       var length =$scope.passwordConfig.length;
       loadAvailableCharacters();
-      console.log('Available characters: '+$scope.passwordConfig.availableCharacters);
       var seed = String();
-      for(var i=0; i<length; i++){
 
+      for(var i=0; i<length; i++){
         var randomIndex = Math.floor(Math.random()*($scope.passwordConfig.availableCharacters.length-1));
         seed+= $scope.passwordConfig.availableCharacters[randomIndex];
       }
@@ -73,6 +72,7 @@ function generatePasswordController($scope, $rootScope, DBService) {
   };
 
   function loadAvailableCharacters(){
+    $scope.passwordConfig.availableCharacters='';
     if($scope.passwordConfig.acceptedCharacters.lowercase){
       $scope.passwordConfig.availableCharacters += $rootScope.LOWERCASE;
     }
@@ -89,8 +89,8 @@ function generatePasswordController($scope, $rootScope, DBService) {
 
 }
 
-function addPlatformController($scope, $ionicPopup, $state, $rootScope, DBService) {
-  $scope.newPlatform = {
+function addCategoryController($scope, $ionicPopup, $state, $rootScope, DBAdminService) {
+  $scope.newCategory = {
     name: String(),
     minimumLength: 8,
     acceptedCharacters: {
@@ -105,8 +105,8 @@ function addPlatformController($scope, $ionicPopup, $state, $rootScope, DBServic
   $scope.COLORS = $rootScope.COLORS;
 
   $scope.savePlatform = function () {
-    if ($scope.newPlatform.name != '' && 6 <= $scope.newPlatform.minimumLength <= 20) {
-      if (DBService.addPlatform($scope.newPlatform)) {
+    if ($scope.newCategory.name != '' && 6 <= $scope.newCategory.minimumLength <= 20) {
+      if (DBAdminService.addCategory($scope.newCategory)) {
         $ionicPopup.show(platformSavedPopup());
       } else {
         $ionicPopup.alert(alertPopup('Save Platform', 'Unable to add Platform'));
@@ -117,7 +117,7 @@ function addPlatformController($scope, $ionicPopup, $state, $rootScope, DBServic
   };
 }
 
-function platformSavedPopup(){
+function platformSavedPopup($scope, $state){
   return {
     template: '<p class="balanced">Platform correctly saved</p>',
     title: 'Save Platform',
