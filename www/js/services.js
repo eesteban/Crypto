@@ -1,39 +1,30 @@
 angular.module('crypto.services', [])
 
-  .factory('DBAdminService', ['$cordovaSQLite', '$q', '$ionicPlatform', DBAdmin])
+  .factory('DBAdminService', ['$q', DBAdmin]);
 
-  .factory('DBService', ['DBAdminService', SQLDatabase]);
+function DBAdmin($q) {
+  var db, allCategories, allPasswords;
 
-function DBAdmin($cordovaSQLite, $q, $ionicPlatform) {
-  var db;
   return {
     initDB: initDB,
-    query: query,
-    getAll: getAll,
-    getById: getById
+
+    addCategory: addCategory,
+    deleteCategory: deleteCategory,
+    getAllCategories: getAllCategories,
+    addPassword: addPassword,
+    deletePassword: deletePassword,
+    getAllPasswords: getAllPasswords
   };
 
   //Init DB
   function initDB() {
     console.log('Initializing database...');
     try {
-      if (window.cordova) {
-        // App syntax
-        db = $cordovaSQLite.openDB("crypto.db");
-      } else {
-        // Ionic serve syntax
-        db = window.openDatabase("crypto.db", "1.0", "Crypto DB", -1);
-      }
+      db = new PouchDB('crypto', {adapter: 'websql'});
 
-      /*$cordovaSQLite.execute(db, "DROP TABLE platforms");
-       $cordovaSQLite.execute(db, "DROP TABLE passwords");*/
+      fillDatabase();
 
-      $cordovaSQLite.execute(db, "CREATE TABLE IF NOT EXISTS platforms (name TEXT PRIMARY KEY, minimumLength INTEGER, " +
-        "lowercase INTEGER, uppercase INTEGER, digit INTEGER, symbol INTEGER, color TEXT)");
-      console.log('Creating table: Platforms');
-
-      $cordovaSQLite.execute(db, "CREATE TABLE IF NOT EXISTS passwords (id INTEGER PRIMARY KEY, name, seed, key, accChar, cipher0, cipher1, cipher2)");
-      console.log('Creating table: Passwords');
+      db.changes({ live: true, since: 'now', include_docs: true}).on('change', onDatabaseChange);
 
       console.log('Database successfully initialized!')
     } catch (err) {
@@ -42,80 +33,135 @@ function DBAdmin($cordovaSQLite, $q, $ionicPlatform) {
 
   }
 
-  // Handle query's and potential errors
-  function query(sqlSentence, parameters) {
-    parameters = parameters || [];
-    var q = $q.defer();
-
-    $ionicPlatform.ready(function () {
-      $cordovaSQLite.execute(db, sqlSentence, parameters)
-        .then(function (result) {
-          q.resolve(result);
-        }, function (error) {
-          console.warn('I found an error');
-          console.warn(error);
-          q.reject(error);
-        });
-    });
-    return q.promise;
-  }
-
-  // Proces a result set
-  function getAll(result) {
-    var output = [];
-
-    for (var i = 0; i < result.rows.length; i++) {
-      output.push(result.rows.item(i));
+  function onDatabaseChange(change) {
+    var array;
+    if (change._id.match(/category_.*/)){
+      array = allCategories;
+    }else if(change._id.match(/password_.*/)){
+      array = allPasswords;
     }
-    return output;
+    var index = findIndex(array, change.id);
+    var element = array[index];
+
+    if (change.deleted) {
+      if (element) {
+        array.splice(index, 1); // delete
+      }
+    } else {
+      if (element && element._id === change.id) {
+        array[index] = change.doc; // update
+      } else {
+        array.splice(index, 0, change.doc); // insert
+      }
+    }
   }
 
-  // Proces a single result
-  function getById(result) {
-    var output = null;
-    output = angular.copy(result.rows.item(0));
-    return output;
+  function findIndex(array, id) {
+    return array.map(function (el) {
+      return el.id;
+    }).indexOf(id);
+  }
+
+  function addCategory(category){
+    var id = 'category_custom_'+category.name;
+    return $q.when(db.put(category, id));
+  }
+
+  function deleteCategory(category){
+    return $q.when(db.remove(category));
+  }
+
+  function getAllCategories(){
+    if (!allCategories) {
+      return $q.when(db.allDocs({ include_docs: true,
+        startkey: 'category_',
+        endkey: 'category_\uffff'}))
+        .then(function(docs) {
+
+          allCategories = docs.rows.map(function(row) {
+            return row.doc;
+          });
+          return allCategories;
+        });
+    } else {
+      return $q.when(allCategories);
+    }
+  }
+
+  function addPassword(password){
+    var id = 'password_'+password.category+'_'+new Date().toJSON();
+    return $q.when(db.put(password, id));
+  }
+
+  function deletePassword(password) {
+    return $q.when(db.remove(password));
+  }
+
+  function getAllPasswords(){
+    if (!allPasswords) {
+      return $q.when(db.allDocs({ include_docs: true,
+        startkey: 'password_',
+        endkey: 'password_\uffff'}))
+        .then(function(docs) {
+
+          allPasswords = docs.rows.map(function(row) {
+            return row.doc;
+          });
+          return allPasswords;
+        });
+    } else {
+      return $q.when(allPasswords);
+    }
+  }
+
+  function fillDatabase(){
+    var email = {
+      name: 'Email',
+      color: 'positive',
+      icon: 'ion-email'
+    };
+    addDefaultCategory(email);
+
+    var socialNetwork = {
+      name: 'Social network',
+      color: 'positive',
+      icon: 'ion-person-stalker'
+    };
+    addDefaultCategory(socialNetwork);
+
+    var work = {
+      name: 'Work',
+      color: 'positive',
+      icon: 'ion-briefcase'
+    };
+    addDefaultCategory(work);
+
+    var forum = {
+      name: 'Forum',
+      color: 'positive',
+      icon: 'ion-chatbox-working'
+    };
+    addDefaultCategory(forum);
+
+    var bank = {
+      name: 'Bank',
+      color: 'positive',
+      icon: 'ion-card'
+    };
+    addDefaultCategory(bank);
+
+    var others = {
+      name: 'Others',
+      color: 'positive',
+      icon: 'ion-earth'
+    };
+    addDefaultCategory(others);
+
+  }
+
+  function addDefaultCategory(category){
+    var id = 'category_default_'+category.name;
+    return $q.when(db.put(category, id));
   }
 }
 
-function SQLDatabase(DBA) {
-
-  return {
-    addPlatform: addPlatform,
-    getAllPlatforms: getAllPlatforms
-  };
-
-  function addPlatform(platform) {
-    var parameters = [platform.name, platform.minimumLength, +platform.acceptedCharacters.lowercase,
-      +platform.acceptedCharacters.uppercase, +platform.acceptedCharacters.digit,
-      +platform.acceptedCharacters.symbol, platform.color];
-    return DBA.query("INSERT INTO platforms (name, minimumLength, lowercase, uppercase, digit, symbol, color) " +
-      "VALUES (?,?,?,?,?,?,?)", parameters);
-  }
-
-  function getAllPlatforms() {
-    return DBA.query("SELECT * FROM platforms")
-      .then(function (result) {
-        var allPlatforms = [];
-
-        for (var i = 0; i < result.rows.length; i++) {
-          var row = result.rows.item(i);
-          platform = {
-            name: row.name,
-            minimumLength: row.minimumLength,
-            acceptedCharacters: {
-              lowercase: row.lowercase != 0,
-              uppercase: row.uppercase != 0,
-              digit: row.digit != 0,
-              symbol: row.symbol != 0
-            },
-            color: row.color
-          };
-          allPlatforms.push(platform);
-        }
-        console.log('Getting all the platforms:'+JSON.stringify(allPlatforms));
-        return allPlatforms;
-      });
-  }
-
-}
